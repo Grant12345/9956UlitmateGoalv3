@@ -38,6 +38,8 @@ public class BlueCorner extends LinearOpMode{
         Intake.initIntake(hardwareMap);
         Wobble.initWobble(hardwareMap);
 
+        DriveTrain.setRunMode("RUN_USING_ENCODER");
+
         Shooter.updateShooterConstants(50, 1, 2,0);
 
         initVuforia();
@@ -119,7 +121,7 @@ public class BlueCorner extends LinearOpMode{
 
             Shooter.shoot(0);
             //Park
-            DriveTrain.cartesianDriveTimer(-.85, -.2, 40);
+            DriveTrain.cartesianDriveTimer(-.85, -.2, 27);
 
             //Close wobble claw
             Wobble.close();
@@ -147,7 +149,7 @@ public class BlueCorner extends LinearOpMode{
             DriveTrain.cartesianDriveTimer(.8, 0, 15);
             sleep(100);
             DriveTrain.cartesianDriveTimer(0, 0.5, 32);
-            DriveTrain.cartesianDriveTimer(0, -0.5, 22);
+            DriveTrain.cartesianDriveTimer(0, -0.5, 26);//22
             sleep(200);
 
             DriveTrain.cartesianDriveTimer(-.8, 0, 15);
@@ -161,7 +163,7 @@ public class BlueCorner extends LinearOpMode{
 
             Wobble.drop();
 
-            DriveTrain.cartesianDriveTimer(-.85, 0.15, 35);
+            DriveTrain.cartesianDriveTimer(-.85, 0.15, 30);
 
             Wobble.close();
         }
@@ -186,7 +188,7 @@ public class BlueCorner extends LinearOpMode{
 
             DriveTrain.driveToLine(-.2, "WHITE", telemetry);
 
-            DriveTrain.cartesianDriveTimer(-.85, 0, 29);
+            DriveTrain.cartesianDriveTimer(-.85, 0, 31);//29
             //Shoot
             Intake.releaseAll();
             Intake.intake();
@@ -195,20 +197,24 @@ public class BlueCorner extends LinearOpMode{
 
 //            DriveTrain.cartesianDriveTimer(.85, 0, 12);
 
-            DriveTrain.cartesianDriveTimer(0, 0.3, 45);
+            DriveTrain.cartesianDriveTimer(0, 0.3, 40);
             DriveTrain.cartesianDriveTimer(0, -0.7, 2);
             DriveTrain.cartesianDriveTimer(0, 0.3, 20);
 
+            DriveTrain.cartesianDriveTimer(-0.7, 0, 10);
 
             sleep(200);
 
             Intake.releaseAll();
             sleep(200);
 
-            DriveTrain.cartesianDriveTimer(0, 0.3, 35);
+            DriveTrain.cartesianDriveTimer(0.7, 0, 10);
             DriveTrain.cartesianDriveTimer(0, -0.7, 2);
-            DriveTrain.cartesianDriveTimer(0, 0.3, 20);
+            DriveTrain.cartesianDriveTimer(0, 0.3, 25);
+            DriveTrain.cartesianDriveTimer(0, -0.7, 2);
+            DriveTrain.cartesianDriveTimer(0, 0.3, 15);
             DriveTrain.cartesianDriveTimer(0, -0.5, 35);
+            DriveTrain.cartesianDriveTimer(-0.7, 0, 10);
             sleep(200);
 
             Intake.releaseAll();
@@ -222,7 +228,7 @@ public class BlueCorner extends LinearOpMode{
 //
 //            Wobble.drop();
 
-            DriveTrain.cartesianDriveTimer(-.85, 0, 37);
+            DriveTrain.cartesianDriveTimer(-.85, 0, 28);
         }
 
         DriveTrain.setRunMode("STOP_AND_RESET_ENCODER");

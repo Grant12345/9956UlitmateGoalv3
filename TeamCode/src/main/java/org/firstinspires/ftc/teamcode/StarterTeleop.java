@@ -27,12 +27,16 @@ public class StarterTeleop extends LinearOpMode {
     private boolean wobbleFlag = false;
     private boolean resetFlag = false;
 
-    private boolean intakeFlag = false;
+    private boolean intakeFlagFoward = false;
+    private boolean intakeFlagReverse = false;
     FtcDashboard dashboard = FtcDashboard.getInstance();
     Telemetry dashboardTelemetry = dashboard.getTelemetry();
 
     private double minBlue = Double.MAX_VALUE;
     private double maxBlue = Double.MIN_VALUE;
+
+    double strafer;
+    double leftBumper = 0;
 
     private double minWhite = Double.MAX_VALUE;
     private double maxWhite = Double.MIN_VALUE;
@@ -66,36 +70,64 @@ public class StarterTeleop extends LinearOpMode {
             Constants.Distance1.add(DriveTrain.frontDistanceSensor.getDistance(DistanceUnit.CM));
 
             DriveTrain.floorColorSensor.enableLed(true);
+            if(gamepad1.left_bumper){
+                leftBumper = 1;
+            }
+            else{
+                leftBumper = 0;
+            }
+
+            if(Math.abs(gamepad1.left_stick_x) > leftBumper){
+                strafer = gamepad1.left_stick_x;
+            }
+            else{
+                strafer = leftBumper;
+            }
 
             //Mecanum Drive
-            if(gamepad1.right_trigger > 0.4){
-                DriveTrain.setRunMode("RUN_WITHOUT_ENCODER");
-                DriveTrain.autoAlign();
-            }
-            else if(gamepad1.left_trigger > .2){
-                DriveTrain.setRunMode("RUN_USING_ENCODER");
-                DriveTrain.cartesianDrive(-gamepad1.left_stick_x, gamepad1.left_stick_y, (gamepad1.right_stick_x / 3));
-            }
-            else {
+//            if(!alignFlag && gamepad1.left_stick_x >  gamepad1.left_stick_y, (gamepad1.right_stick_x)
+//            if(gamepad1.right_trigger > 0.4){
+//                DriveTrain.setRunMode("RUN_WITHOUT_ENCODER");
+//                DriveTrain.autoAlign();
+//            }
+//            else if(gamepad1.left_trigger > .2){
+//                DriveTrain.setRunMode("RUN_USING_ENCODER");
+//                DriveTrain.cartesianDrive(-gamepad1.left_stick_x, gamepad1.left_stick_y, (gamepad1.right_stick_x / 3));
+//            }
+//            else
+           if(strafer == gamepad1.left_stick_x) {
                 DriveTrain.setRunMode("RUN_USING_ENCODER");
                 DriveTrain.cartesianDrive(-gamepad1.left_stick_x, gamepad1.left_stick_y, gamepad1.right_stick_x);
-            }
+           }
+           else if (strafer == leftBumper){
+//               DriveTrain.alignBlueWall(0.65,0);
+               DriveTrain.exactLineUp(telemetry);
+           }
+            telemetry.addData("Turn Power", gamepad1.right_stick_x);
 
             if(gamepad1.dpad_up){
                DriveTrain.resetGyro();
             }
 
-            if (gamepad1.x && !intakeFlag) {
-                intakeFlag = true;
+            if (gamepad1.x && !intakeFlagFoward) {
+                intakeFlagFoward = true;
                 Intake.intakeChangeState("FORWARD");
             }
-            else if (gamepad1.b && !intakeFlag){
-                intakeFlag = true;
+            else if (gamepad1.b && !intakeFlagReverse){
+                intakeFlagReverse = true;
                 Intake.intakeChangeState("REVERSE");
             }
-            else if((!gamepad1.x && intakeFlag) || (!gamepad1.b && intakeFlag)){
-                intakeFlag = false;
+
+            if(intakeFlagFoward && !gamepad1.x){
+                intakeFlagFoward = false;
+            } else if(intakeFlagReverse && !gamepad1.b){
+                intakeFlagReverse = false;
             }
+
+
+//            else if((!gamepad1.x && intakeFlag) || (!gamepad1.b && intakeFlag)){
+//                intakeFlag = false;
+//            }
 
             Intake.intakeUpdatePosition();
 
@@ -134,23 +166,24 @@ public class StarterTeleop extends LinearOpMode {
 //                Shooter.setPosition("WHITE_LINE");
 //            }
             //In front of rings
-            if (gamepad1.left_bumper) {
-                Shooter.setPosition("RINGS");
-                Intake.releaseAllRings();
-            }else if (gamepad1.right_bumper) {
+//            if (gamepad1.left_bumper) {
+//                Shooter.setPosition("RINGS");
+//                Intake.releaseAllRings();
+            if (gamepad1.right_bumper) {
                 Shooter.setPosition("WHITE_LINE");
                 Intake.releaseAll();
             }else if(gamepad1.dpad_right){
                 Shooter.setPosition("POWER_SHOT");
-                Intake.releaseOne();
+                sleep(200);
+                Intake.shootOneNoClear();
             }
             else {
                 Intake.defaultPos();
             }
 
-            if(gamepad1.dpad_left){
-                Shooter.setPosition("POWER_SHOT");
-            }
+//            if(gamepad1.dpad_left){
+//                Shooter.setPosition("POWER_SHOT");
+//            }
 
 //            if(gamepad2.a){
 //                P = P + 2;
@@ -200,6 +233,10 @@ public class StarterTeleop extends LinearOpMode {
             } else {
                 Intake.defaultPos();
             }
+
+//            if(gamepad1.left_bumper){
+//                DriveTrain.alignBlueWall(0.95,0);
+//            }
 
             Shooter.updateShooterConstants(P, I, D,0);
 

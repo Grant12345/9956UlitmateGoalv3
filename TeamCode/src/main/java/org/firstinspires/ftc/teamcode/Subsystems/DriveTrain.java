@@ -13,6 +13,7 @@ import org.firstinspires.ftc.teamcode.Util.Constants;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
@@ -28,7 +29,7 @@ public class DriveTrain {
     public static DcMotor rightFrontMotor; //Expansion hub, port 3
     public static DcMotor rightBackMotor; //Expansion hub, port 2
 
-    public static ColorSensor floorColorSensor; //Expansion hub, I2C Bus 3
+    public static RevColorSensorV3 floorColorSensor; //Expansion hub, I2C Bus 3
 
     public static BNO055IMU imu; //Control hub, I2C Bus 0
     public static Orientation angles;
@@ -37,6 +38,7 @@ public class DriveTrain {
 
     public static double driveTrainError = 0;
     public static double driveTrainPower = 0;
+    public static boolean alignFlag = false;
 
     //2m distance sensors
     public static DistanceSensor frontDistanceSensor; //Expansion hub, I2C Bus 2;
@@ -55,7 +57,8 @@ public class DriveTrain {
         rightFrontMotor = Constants.HwMap.dcMotor.get("rightFrontMotor");
         rightBackMotor = Constants.HwMap.dcMotor.get("rightBackMotor");
 
-        floorColorSensor = Constants.HwMap.get(com.qualcomm.robotcore.hardware.ColorSensor.class, "floorColorSensor");
+        floorColorSensor = Constants.HwMap.get(com.qualcomm.hardware.rev.RevColorSensorV3.class, "floorColorSensor");
+//        floorColorSensor.setGain(3);
 
         frontDistanceSensor = Constants.HwMap.get(DistanceSensor.class, "frontDistanceSensor");
         backDistanceSensor = Constants.HwMap.get(DistanceSensor.class, "backDistanceSensor");
@@ -90,15 +93,35 @@ public class DriveTrain {
         double speed = Math.sqrt(2) * Math.hypot(x, y);
         double command = Math.atan2(y, -x) + Math.PI/2;
         double rotation = z;
+        if(z > 0) {
+            if (z < 0.01) {
+                rotation = 0;
+            } else if (z > 0.9) {
+                rotation = z * z;
+            } else {
+                rotation = (z * z) + 0.01;
+            }
+        }
+        if(z < 0) {
+            if (z > -0.01) {
+                rotation = 0;
+            } else if (z < -0.9) {
+                rotation = -(z * z);
+            }
+            else{
+                rotation = (-(z*z)) - 0.01;
+            }
+        }
+
 
         angles = DriveTrain.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.RADIANS);
         double adjustedXHeading = Math.cos(command + angles.firstAngle + Math.PI/4);
         double adjustedYHeading = Math.sin(command + angles.firstAngle + Math.PI/4);
 
-        DriveTrain.leftFrontMotor.setPower((speed * adjustedYHeading + rotation) * Constants.TELEOP_LIMITER);
-        DriveTrain.rightFrontMotor.setPower((speed * adjustedXHeading - rotation) * Constants.TELEOP_LIMITER);
-        DriveTrain.leftBackMotor.setPower((speed * adjustedXHeading + rotation) * Constants.TELEOP_LIMITER);
-        DriveTrain.rightBackMotor.setPower((speed * adjustedYHeading - rotation) * Constants.TELEOP_LIMITER);
+        DriveTrain.leftFrontMotor.setPower((speed * adjustedYHeading + rotation) * Constants.TELEOP_NONLIMITER);
+        DriveTrain.rightFrontMotor.setPower((speed * adjustedXHeading - rotation) * Constants.TELEOP_NONLIMITER);
+        DriveTrain.leftBackMotor.setPower((speed * adjustedXHeading + rotation) * Constants.TELEOP_NONLIMITER);
+        DriveTrain.rightBackMotor.setPower((speed * adjustedYHeading - rotation) * Constants.TELEOP_NONLIMITER);
     }
 
     public static void cartesianDriveTimer(double x, double y, int timerLength) throws InterruptedException {
@@ -221,7 +244,7 @@ public class DriveTrain {
                 if (side.equals("LEFT")) {
                     currentDistance = leftDistanceSensor.getDistance(DistanceUnit.CM);//leftDistanceSensor
                     telemetry.addData("Left Distance Sensor", leftDistanceSensor.getDistance(DistanceUnit.CM));
-                    exitValue = 68;
+                    exitValue = 73;
                 } else if (side.equals("RIGHT")) {
                     currentDistance = rightDistanceSensor.getDistance(DistanceUnit.CM);// rightDistanceSensor
                     telemetry.addData("Right Distance Sensor", rightDistanceSensor.getDistance(DistanceUnit.CM));
@@ -363,6 +386,176 @@ public class DriveTrain {
         rightBackMotor.setPower(0);
     }
 
+    public static void exactLineUp(Telemetry telemetry) throws InterruptedException {
+        int distanceCoef = 16;
+        if(!alignFlag) {
+            driveToLine(0.2, "WHITE", telemetry);
+            DriveTrain.setRunMode("RUN_TO_POSITION");
+            leftFrontMotor.setTargetPosition(leftFrontMotor.getCurrentPosition() - 250);
+            rightFrontMotor.setTargetPosition(rightFrontMotor.getCurrentPosition() - 250);
+            leftBackMotor.setTargetPosition(leftBackMotor.getCurrentPosition() - 250);
+            rightBackMotor.setTargetPosition(rightBackMotor.getCurrentPosition() - 250);
+
+            leftFrontMotor.setPower(0.4);
+            rightFrontMotor.setPower(0.4);
+            leftBackMotor.setPower(0.4);
+            rightBackMotor.setPower(0.4);
+
+            if (!leftFrontMotor.isBusy()) {
+                alignFlag = true;
+            }
+        }
+        final double currentDistance = leftDistanceSensor.getDistance(DistanceUnit.CM);
+        final int travelingDistance = 73 - (int)currentDistance;
+
+        leftFrontMotor.setTargetPosition(leftFrontMotor.getCurrentPosition() - (distanceCoef * travelingDistance));
+        rightFrontMotor.setTargetPosition(rightFrontMotor.getCurrentPosition() + (distanceCoef * travelingDistance));
+        leftBackMotor.setTargetPosition(leftBackMotor.getCurrentPosition() + (distanceCoef * travelingDistance));
+        rightBackMotor.setTargetPosition(rightBackMotor.getCurrentPosition() - (distanceCoef * travelingDistance));
+
+        leftFrontMotor.setPower(0.7);
+        rightFrontMotor.setPower(0.7);
+        leftBackMotor.setPower(0.7);
+        rightBackMotor.setPower(0.7);
+
+    }
+//    public static void alignBlueWall(double x, double y){
+//        double speed = Math.sqrt(2) * Math.hypot(x, y);
+//        double command = Math.atan2(y, -x) + Math.PI/2;
+//        double rotation = 0;
+//        double startingHeading = angles.firstAngle;
+//        double currentError = 0;
+//        double adjustedXHeading = 0;
+//        double adjustedYHeading = 0;
+//        double currentDistance;
+//        double exitValue;
+//        currentDistance = leftDistanceSensor.getDistance(DistanceUnit.CM);//leftDistanceSensor
+//        exitValue = 73;
+//        angles = DriveTrain.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.RADIANS);
+//
+//        adjustedXHeading = Math.cos(command + angles.firstAngle + Math.PI / 4);
+//        adjustedYHeading = Math.sin(command + angles.firstAngle + Math.PI / 4);
+//
+//        driveTrainError = angles.firstAngle - 0;
+//        if(Math.abs(driveTrainError) > (Math.PI / 12)){
+//            driveTrainPower = .65;
+//        }
+//        else{
+//            if(Math.abs(driveTrainError) < (Math.PI / 90)){
+//                driveTrainPower = 0;
+//            }
+//            else if(Math.abs(driveTrainError) > (Math.PI / 90)) {
+//                driveTrainPower = Math.abs(driveTrainError / (Math.PI / 3.0)) + 0.13; //  (Math.PI / 5.2)) + 0.1
+//            }
+//        }
+//        if(driveTrainError > 0){
+//            driveTrainPower = driveTrainPower;
+//        }
+//        else if(driveTrainError < 0){
+//            driveTrainPower = -driveTrainPower;
+//        }
+//
+//        currentError = angles.firstAngle - startingHeading;
+//        if(currentDistance > (exitValue + 4)){
+//            if(currentDistance > 80) {
+//                speed = (currentDistance - 10) / 100;
+//            }
+//            leftFrontMotor.setPower((speed * adjustedYHeading + driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            rightFrontMotor.setPower((speed * adjustedXHeading - driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            leftBackMotor.setPower((speed * adjustedXHeading + driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            rightBackMotor.setPower((speed * adjustedYHeading - driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//        }
+//        else if (currentDistance < (exitValue - 4)){
+//            if(currentDistance < 65) {
+//                speed = (currentDistance - 10) / 100;
+//            }
+//            leftFrontMotor.setPower((-speed * adjustedYHeading + driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            rightFrontMotor.setPower((-speed * adjustedXHeading - driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            leftBackMotor.setPower((-speed * adjustedXHeading + driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            rightBackMotor.setPower((-speed * adjustedYHeading - driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//        }
+//        else if(driveTrainError > 0){
+//            cartesianDrive(0, 0, driveTrainPower);
+//        }
+//        else if(driveTrainError < 0){
+//            cartesianDrive(0, 0, -driveTrainPower);
+//        }
+//        else{
+//            leftFrontMotor.setPower(0);
+//            rightFrontMotor.setPower(0);
+//            leftBackMotor.setPower(0);
+//            rightBackMotor.setPower(0);
+//        }
+//    }
+//    public static void alignRedWall(double x, double y){
+//        double speed = Math.sqrt(2) * Math.hypot(x, y);
+//        double command = Math.atan2(y, -x) + Math.PI/2;
+//        double rotation = 0;
+//        double startingHeading = angles.firstAngle;
+//        double currentError = 0;
+//        double adjustedXHeading = 0;
+//        double adjustedYHeading = 0;
+//        double currentDistance;
+//        double exitValue;
+//        currentDistance = rightDistanceSensor.getDistance(DistanceUnit.CM);//leftDistanceSensor
+//        exitValue = 63;
+//        angles = DriveTrain.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.RADIANS);
+//
+//        adjustedXHeading = Math.cos(command + angles.firstAngle + Math.PI / 4);
+//        adjustedYHeading = Math.sin(command + angles.firstAngle + Math.PI / 4);
+//
+//        driveTrainError = angles.firstAngle - 0;
+//        if(Math.abs(driveTrainError) > (Math.PI / 12)){
+//            driveTrainPower = .65;
+//        }
+//        else{
+//            if(Math.abs(driveTrainError) < (Math.PI / 90)){
+//                driveTrainPower = 0;
+//            }
+//            else if(Math.abs(driveTrainError) > (Math.PI / 90)) {
+//                driveTrainPower = Math.abs(driveTrainError / (Math.PI / 3.0)) + 0.13; //  (Math.PI / 5.2)) + 0.1
+//            }
+//        }
+//        if(driveTrainError > 0){
+//            driveTrainPower = driveTrainPower;
+//        }
+//        else if(driveTrainError < 0){
+//            driveTrainPower = -driveTrainPower;
+//        }
+//
+//        currentError = angles.firstAngle - startingHeading;
+//        if(currentDistance > (exitValue + 4)){
+//            if(currentDistance > 80) {
+//                speed = (currentDistance - 10) / 100;
+//            }
+//            leftFrontMotor.setPower((speed * adjustedYHeading + driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            rightFrontMotor.setPower((speed * adjustedXHeading - driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            leftBackMotor.setPower((speed * adjustedXHeading + driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            rightBackMotor.setPower((speed * adjustedYHeading - driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//        }
+//        else if (currentDistance < (exitValue - 4)){
+//            if(currentDistance < 65) {
+//                speed = (currentDistance - 10) / 100;
+//            }
+//            leftFrontMotor.setPower((-speed * adjustedYHeading + driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            rightFrontMotor.setPower((-speed * adjustedXHeading - driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            leftBackMotor.setPower((-speed * adjustedXHeading + driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//            rightBackMotor.setPower((-speed * adjustedYHeading - driveTrainPower) * Constants.TELEOP_NONLIMITER);
+//        }
+//        else if(driveTrainError > 0){
+//            cartesianDrive(0, 0, driveTrainPower);
+//        }
+//        else if(driveTrainError < 0){
+//            cartesianDrive(0, 0, -driveTrainPower);
+//        }
+//        else{
+//            leftFrontMotor.setPower(0);
+//            rightFrontMotor.setPower(0);
+//            leftBackMotor.setPower(0);
+//            rightBackMotor.setPower(0);
+//        }
+//    }
+
 //    public static void DriveAndTwist(double x, double y, double z, int timer, Telemetry telemetry){
 //        double speed = Math.sqrt(2) * Math.hypot(x, y);
 //        double command = Math.atan2(y, -x) + Math.PI/2;
@@ -446,7 +639,7 @@ public class DriveTrain {
         double minWhite = Double.MAX_VALUE;
         double maxWhite = Double.MIN_VALUE;
         if(color.equals("RED")){
-            while(floorColorSensor.red() < 1600){//240, 82
+            while(floorColorSensor.red() < 1450){//240, 82
                 leftFrontMotor.setPower(power);
                 rightFrontMotor.setPower(power);
                 leftBackMotor.setPower(power);
@@ -458,7 +651,7 @@ public class DriveTrain {
             rightBackMotor.setPower(0);
         }
         else if(color.equals("BLUE")){
-            while(floorColorSensor.blue() < 2100){//480, 680
+            while(floorColorSensor.blue() < 1900){//480, 680
                 if(DriveTrain.floorColorSensor.blue() > maxBlue){
                     maxBlue = DriveTrain.floorColorSensor.blue();
                 }
