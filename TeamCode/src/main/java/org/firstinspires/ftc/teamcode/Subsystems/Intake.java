@@ -80,6 +80,7 @@ public class Intake {
         Shooter.setPosition("WHITE_LINE");
         vibrator.setPosition(0.55);
         rings.clear();
+        DriveTrain.alignFlag = false;
     }
 
     public static void releaseAllRings() throws InterruptedException {
@@ -98,6 +99,7 @@ public class Intake {
         }
         Shooter.setPosition("WHITE_LINE");
         rings.clear();
+        DriveTrain.alignFlag = false;
     }
     public static void shootAllNoClear()  throws InterruptedException {
         vibrator.setPosition(VIBRATOR_OPEN);
@@ -112,6 +114,7 @@ public class Intake {
             Thread.sleep(100);
         }
         Shooter.setPosition("WHITE_LINE");
+        DriveTrain.alignFlag = false;
     }
 
 

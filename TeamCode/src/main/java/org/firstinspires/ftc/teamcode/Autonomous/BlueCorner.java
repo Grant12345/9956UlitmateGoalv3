@@ -117,7 +117,6 @@ public class BlueCorner extends LinearOpMode{
             //DriveTrain.cartesianDriveTimer(-.75, -.2, 27);
             DriveTrain.driveToLine(.3, "WHITE", telemetry);
 
-
             DriveTrain.cartesianDriveTimer(-.85, 0, 20);
             //Close wobble claw
             Wobble.close();
